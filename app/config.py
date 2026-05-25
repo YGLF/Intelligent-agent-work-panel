@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     app_env: Literal["local", "test", "prod"] = "local"
     database_url: str = "sqlite:///./local_dev_agent_status_panel.db"
+    api_token: str = "dev-token"
 
     model_config = SettingsConfigDict(
         env_file=".env",

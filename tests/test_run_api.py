@@ -1,8 +1,5 @@
-from types import SimpleNamespace
-
 import pytest
 
-from app.api.deps import require_api_token
 from app.config import Settings
 from app.db import Base
 from app.models import agent, artifact, log, risk, run  # noqa: F401
@@ -59,10 +56,39 @@ def test_create_run_rejects_missing_token(client):
     assert response.status_code == 401
 
 
-def test_require_api_token_uses_default_fallback_when_settings_has_no_api_token():
-    result = require_api_token("dev-token", settings=SimpleNamespace())
+def test_create_run_rejects_invalid_token(client):
+    response = client.post(
+        "/api/v1/runs",
+        headers={"x-api-token": "wrong-token", "x-request-id": "req-401"},
+        json={
+            "run_code": "run-401",
+            "run_name": "Invalid token run",
+            "source_type": "codex",
+        },
+    )
 
-    assert result == "api_token"
+    assert response.status_code == 403
+
+
+@pytest.mark.parametrize(
+    ("headers", "expected_status"),
+    [
+        ({"x-api-token": "dev-token"}, 400),
+        ({"x-api-token": "dev-token", "x-request-id": "   "}, 400),
+    ],
+)
+def test_create_run_rejects_missing_or_blank_request_id(client, headers, expected_status):
+    response = client.post(
+        "/api/v1/runs",
+        headers=headers,
+        json={
+            "run_code": "run-req",
+            "run_name": "Request id validation run",
+            "source_type": "codex",
+        },
+    )
+
+    assert response.status_code == expected_status
 
 
 def test_create_run_returns_run_code_when_token_provided(client):
@@ -79,4 +105,31 @@ def test_create_run_returns_run_code_when_token_provided(client):
     assert response.status_code == 201
     payload = response.json()
     assert payload["success"] is True
+    assert payload["request_id"] == "req-001"
+    assert response.headers["x-request-id"] == "req-001"
+    assert payload["data"]["id"] > 0
     assert payload["data"]["run_code"] == "run-001"
+
+
+def test_create_run_rejects_duplicate_run_code(client):
+    first_response = client.post(
+        "/api/v1/runs",
+        headers={"x-api-token": "dev-token", "x-request-id": "req-dup-1"},
+        json={
+            "run_code": "run-dup",
+            "run_name": "First duplicate run",
+            "source_type": "codex",
+        },
+    )
+    second_response = client.post(
+        "/api/v1/runs",
+        headers={"x-api-token": "dev-token", "x-request-id": "req-dup-2"},
+        json={
+            "run_code": "run-dup",
+            "run_name": "Second duplicate run",
+            "source_type": "codex",
+        },
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 409
