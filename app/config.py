@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     def validate_database_url(self) -> "Settings":
         if self.database_url.startswith("sqlite:///./local_dev_") and self.app_env not in {"local", "test"}:
             raise ValueError("APP_ENV must be local or test when using the default local SQLite database_url")
+        if self.app_env == "prod" and self.api_token == "dev-token":
+            raise ValueError("API_TOKEN must not use the default dev token in prod")
 
         return self
 

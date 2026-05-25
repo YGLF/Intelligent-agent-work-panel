@@ -42,6 +42,27 @@ def test_settings_rejects_implicit_local_sqlite_outside_local_modes():
         Settings(app_env="prod", _env_file=None)
 
 
+def test_settings_rejects_default_api_token_in_prod():
+    with pytest.raises(ValueError, match="API_TOKEN"):
+        Settings(
+            app_env="prod",
+            database_url="postgresql://example.invalid/task3",
+            api_token="dev-token",
+            _env_file=None,
+        )
+
+
+def test_settings_accepts_custom_api_token_in_prod():
+    settings = Settings(
+        app_env="prod",
+        database_url="postgresql://example.invalid/task3",
+        api_token="custom-token",
+        _env_file=None,
+    )
+
+    assert settings.api_token == "custom-token"
+
+
 def test_create_run_rejects_missing_token(client):
     response = client.post(
         "/api/v1/runs",
@@ -54,6 +75,7 @@ def test_create_run_rejects_missing_token(client):
     )
 
     assert response.status_code == 401
+    assert response.json() == {"detail": "x-api-token header is required"}
 
 
 def test_create_run_rejects_invalid_token(client):
@@ -68,16 +90,17 @@ def test_create_run_rejects_invalid_token(client):
     )
 
     assert response.status_code == 403
+    assert response.json() == {"detail": "x-api-token header is invalid"}
 
 
 @pytest.mark.parametrize(
-    ("headers", "expected_status"),
+    ("headers", "expected_status", "expected_detail"),
     [
-        ({"x-api-token": "dev-token"}, 400),
-        ({"x-api-token": "dev-token", "x-request-id": "   "}, 400),
+        ({"x-api-token": "dev-token"}, 400, "x-request-id header is required"),
+        ({"x-api-token": "dev-token", "x-request-id": "   "}, 400, "x-request-id header must not be blank"),
     ],
 )
-def test_create_run_rejects_missing_or_blank_request_id(client, headers, expected_status):
+def test_create_run_rejects_missing_or_blank_request_id(client, headers, expected_status, expected_detail):
     response = client.post(
         "/api/v1/runs",
         headers=headers,
@@ -89,6 +112,7 @@ def test_create_run_rejects_missing_or_blank_request_id(client, headers, expecte
     )
 
     assert response.status_code == expected_status
+    assert response.json() == {"detail": expected_detail}
 
 
 def test_create_run_returns_run_code_when_token_provided(client):
@@ -133,3 +157,4 @@ def test_create_run_rejects_duplicate_run_code(client):
 
     assert first_response.status_code == 201
     assert second_response.status_code == 409
+    assert second_response.json() == {"detail": "run_code already exists"}
