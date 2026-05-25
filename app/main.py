@@ -1,12 +1,11 @@
 from fastapi import FastAPI
 
-
-SERVICE_NAME = "codex-agent-status-panel"
-SERVICE_VERSION = "0.1.0"
+from app.config import get_settings
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title=SERVICE_NAME, version=SERVICE_VERSION)
+    settings = get_settings()
+    app = FastAPI(title=settings.app_name, version=settings.app_version)
 
     @app.get("/health")
     def health() -> dict:
@@ -15,8 +14,8 @@ def create_app() -> FastAPI:
             "code": "OK",
             "message": "service healthy",
             "data": {
-                "service": SERVICE_NAME,
-                "version": SERVICE_VERSION,
+                "service": settings.app_name,
+                "version": settings.app_version,
             },
         }
 
