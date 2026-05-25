@@ -1,12 +1,9 @@
-from fastapi.testclient import TestClient
-
-from app.main import create_app
+from conftest import make_client
 
 
 def test_health_endpoint_returns_service_metadata():
-    client = TestClient(create_app())
-
-    response = client.get("/health")
+    with make_client() as client:
+        response = client.get("/health")
 
     assert response.status_code == 200
     assert response.json() == {
