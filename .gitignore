@@ -7,6 +7,8 @@ __pycache__/
 htmlcov/
 .coverage
 test.db
+agent_status_panel.db
+local_dev_agent_status_panel.db
 dist/
 build/
 *.egg-info/

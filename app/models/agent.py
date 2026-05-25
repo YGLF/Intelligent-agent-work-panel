@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, JSON, String, Text, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql.naming import conv
 
 from app.models.base import Base
 from app.models.enums import AgentPhase, RiskLevel, RunStatus
@@ -10,6 +11,11 @@ from app.models.enums import AgentPhase, RiskLevel, RunStatus
 class RunAgent(Base):
     __tablename__ = "run_agents"
     __table_args__ = (
+        UniqueConstraint("run_id", "agent_code", name="uk_run_agent"),
+        CheckConstraint(
+            "progress_percent >= 0 AND progress_percent <= 100",
+            name=conv("ck_run_agents_progress_percent_range"),
+        ),
         Index("idx_run_status", "run_id", "status"),
         Index("idx_run_phase", "run_id", "phase"),
         Index("idx_run_owner_scope", "run_id", "owner_scope"),
