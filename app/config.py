@@ -20,10 +20,16 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_database_url(self) -> "Settings":
+        app_env_explicitly_set = "app_env" in self.model_fields_set
+
         if self.database_url.startswith("sqlite:///./local_dev_") and self.app_env not in {"local", "test"}:
             raise ValueError("APP_ENV must be local or test when using the default local SQLite database_url")
-        if self.app_env == "prod" and self.api_token == "dev-token":
-            raise ValueError("API_TOKEN must not use the default dev token in prod")
+        if (
+            self.api_token == "dev-token"
+            and self.database_url != "sqlite:///./local_dev_agent_status_panel.db"
+            and (not app_env_explicitly_set or self.app_env not in {"local", "test"})
+        ):
+            raise ValueError("API_TOKEN must not use the default dev token outside explicit local/test mode")
 
         return self
 

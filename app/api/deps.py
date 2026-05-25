@@ -35,4 +35,4 @@ def require_api_token(
             detail="x-api-token header is invalid",
         )
 
-    return "api_token"
+    return f"token:{settings.api_token}"

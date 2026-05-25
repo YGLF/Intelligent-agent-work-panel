@@ -16,14 +16,14 @@ def create_run(
     payload: RunCreate,
     response: Response,
     request_id: str = Depends(require_request_id),
-    _: str = Depends(require_api_token),
+    created_by: str = Depends(require_api_token),
     db: Session = Depends(get_db),
 ) -> ApiResponse[RunRead]:
     run = Run(
         run_code=payload.run_code,
         run_name=payload.run_name,
         source_type=payload.source_type,
-        created_by="api_token",
+        created_by=created_by,
     )
     db.add(run)
 

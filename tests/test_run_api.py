@@ -52,6 +52,15 @@ def test_settings_rejects_default_api_token_in_prod():
         )
 
 
+def test_settings_rejects_default_api_token_for_non_local_database_without_explicit_local_mode():
+    with pytest.raises(ValueError, match="API_TOKEN"):
+        Settings(
+            database_url="postgresql://example.invalid/task3",
+            api_token="dev-token",
+            _env_file=None,
+        )
+
+
 def test_settings_accepts_custom_api_token_in_prod():
     settings = Settings(
         app_env="prod",
@@ -129,9 +138,13 @@ def test_create_run_returns_run_code_when_token_provided(client):
     assert response.status_code == 201
     payload = response.json()
     assert payload["success"] is True
+    assert payload["code"] == "CREATED"
+    assert payload["message"] == "run created"
     assert payload["request_id"] == "req-001"
     assert response.headers["x-request-id"] == "req-001"
     assert payload["data"]["id"] > 0
+    assert payload["data"]["status"] == "pending"
+    assert payload["data"]["created_by"] == "token:dev-token"
     assert payload["data"]["run_code"] == "run-001"
 
 
