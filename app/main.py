@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.api.routes.agents import router as agents_router
 from app.api.routes.runs import router as runs_router
 from app.config import get_settings
 
@@ -21,6 +22,7 @@ def create_app() -> FastAPI:
         }
 
     app.include_router(runs_router)
+    app.include_router(agents_router)
 
     return app
 
