@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codex-agent-status-panel"
+version = "0.1.0"
+description = "Bootstrap FastAPI service for the Codex Agent Status Panel."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+  { name = "Codex" },
+]
+dependencies = [
+  "fastapi>=0.115,<1.0",
+  "uvicorn>=0.30,<1.0",
+  "sqlalchemy>=2.0,<3.0",
+  "pymysql>=1.1,<2.0",
+  "alembic>=1.13,<2.0",
+  "jinja2>=3.1,<4.0",
+  "pydantic-settings>=2.3,<3.0",
+  "httpx>=0.27,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2,<9.0",
+  "pytest-cov>=5.0,<6.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
