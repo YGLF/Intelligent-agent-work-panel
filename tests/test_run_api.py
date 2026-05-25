@@ -40,3 +40,20 @@ def test_settings_default_database_url_is_explicitly_local_only():
 def test_settings_rejects_implicit_local_sqlite_outside_local_modes():
     with pytest.raises(ValueError, match="APP_ENV"):
         Settings(app_env="prod", _env_file=None)
+
+
+def test_create_run_requires_token_and_returns_run_code(client):
+    response = client.post(
+        "/api/v1/runs",
+        headers={"x-api-token": "dev-token", "x-request-id": "req-001"},
+        json={
+            "run_code": "run-001",
+            "run_name": "Codex coordination run",
+            "source_type": "codex",
+        },
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["success"] is True
+    assert payload["data"]["run_code"] == "run-001"
