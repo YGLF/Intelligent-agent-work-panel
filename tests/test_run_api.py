@@ -1,5 +1,8 @@
+from types import SimpleNamespace
+
 import pytest
 
+from app.api.deps import require_api_token
 from app.config import Settings
 from app.db import Base
 from app.models import agent, artifact, log, risk, run  # noqa: F401
@@ -42,7 +45,27 @@ def test_settings_rejects_implicit_local_sqlite_outside_local_modes():
         Settings(app_env="prod", _env_file=None)
 
 
-def test_create_run_requires_token_and_returns_run_code(client):
+def test_create_run_rejects_missing_token(client):
+    response = client.post(
+        "/api/v1/runs",
+        headers={"x-request-id": "req-000"},
+        json={
+            "run_code": "run-000",
+            "run_name": "Missing token run",
+            "source_type": "codex",
+        },
+    )
+
+    assert response.status_code == 401
+
+
+def test_require_api_token_uses_default_fallback_when_settings_has_no_api_token():
+    result = require_api_token("dev-token", settings=SimpleNamespace())
+
+    assert result == "api_token"
+
+
+def test_create_run_returns_run_code_when_token_provided(client):
     response = client.post(
         "/api/v1/runs",
         headers={"x-api-token": "dev-token", "x-request-id": "req-001"},

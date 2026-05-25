@@ -24,7 +24,9 @@ def require_api_token(
             detail="x-api-token header is required",
         )
 
-    if x_api_token != settings.api_token:
+    expected_token = getattr(settings, "api_token", "dev-token")
+
+    if x_api_token != expected_token:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="x-api-token header is invalid",
