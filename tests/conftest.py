@@ -46,19 +46,3 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
         app.dependency_overrides.clear()
         Base.metadata.drop_all(bind=engine)
         engine.dispose()
-
-
-@pytest.fixture
-def seeded_run(client: TestClient):
-    response = client.post(
-        "/api/v1/runs",
-        headers={"x-api-token": "dev-token", "x-request-id": "req-seed-run"},
-        json={
-            "run_code": "run-seeded",
-            "run_name": "Seeded run",
-            "source_type": "codex",
-        },
-    )
-
-    payload = response.json()["data"]
-    return payload

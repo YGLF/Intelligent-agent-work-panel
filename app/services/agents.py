@@ -1,6 +1,3 @@
-from datetime import datetime, timezone
-
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.agent import RunAgent
@@ -22,7 +19,7 @@ def register_agent(db: Session, run: Run, payload: AgentRegister) -> RunAgent:
 
     try:
         db.commit()
-    except IntegrityError as exc:
+    except Exception:
         db.rollback()
         raise
 
@@ -35,6 +32,7 @@ def update_agent_status(
     *,
     agent: RunAgent,
     payload: AgentStatusUpdate,
+    audit_request_id: str,
 ) -> RunAgent:
     old_status = agent.status
     old_phase = agent.phase
@@ -64,7 +62,7 @@ def update_agent_status(
         summary=f"agent status updated to {payload.status}",
         reported_by=payload.reported_by,
         report_source=payload.report_source,
-        request_id=payload.request_id,
+        request_id=audit_request_id,
         idempotency_key=payload.idempotency_key,
         occurred_at=payload.reported_at,
         old_status=old_status,

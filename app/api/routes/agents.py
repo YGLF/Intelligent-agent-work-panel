@@ -55,7 +55,7 @@ def update_run_agent_status(
     if agent is None or agent.run_id != run_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="agent not found")
 
-    updated = update_agent_status(db, agent=agent, payload=payload)
+    updated = update_agent_status(db, agent=agent, payload=payload, audit_request_id=request_id)
     response.headers["x-request-id"] = request_id
     return ApiResponse[AgentRead](
         success=True,
