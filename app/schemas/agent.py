@@ -10,6 +10,8 @@ class AgentRegister(BaseModel):
     agent_name: str = Field(min_length=1, max_length=255)
     role: str = Field(min_length=1, max_length=128)
     owner_scope: str | None = Field(default=None, max_length=128)
+    codex_agent_type: str | None = Field(default=None, max_length=64)
+    conversation_ref: str | None = Field(default=None, max_length=255)
 
 
 class AgentStatusUpdate(BaseModel):
@@ -19,6 +21,16 @@ class AgentStatusUpdate(BaseModel):
     progress_percent: int = Field(ge=0, le=100)
     current_task: str | None = Field(default=None, max_length=500)
     blocking_reason: str | None = None
+    depends_on: list[str] | None = None
+    handoff_to: str | None = Field(default=None, max_length=128)
+    needs_input: bool | None = None
+    deliverable_summary: str | None = None
+    codex_agent_type: str | None = Field(default=None, max_length=64)
+    conversation_ref: str | None = Field(default=None, max_length=255)
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    last_heartbeat_at: datetime | None = None
+    ready_for_integration: bool | None = None
     risk_level: RiskLevel
     reported_at: datetime
     last_update_at: datetime
@@ -43,5 +55,7 @@ class AgentRead(BaseModel):
     current_task: str | None
     risk_level: RiskLevel
     blocking_reason: str | None
+    codex_agent_type: str | None
+    conversation_ref: str | None
     last_update_at: datetime | None
     version_no: int

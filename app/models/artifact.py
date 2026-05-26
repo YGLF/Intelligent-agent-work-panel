@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -10,6 +10,7 @@ from app.models.enums import ArtifactType
 class RunAgentArtifact(Base):
     __tablename__ = "run_agent_artifacts"
     __table_args__ = (
+        UniqueConstraint("agent_id", "idempotency_key", name="uk_run_agent_artifacts_agent_id_idempotency_key"),
         Index("idx_agent_created", "agent_id", "created_at"),
         Index("idx_run_type", "run_id", "artifact_type"),
     )
@@ -25,6 +26,7 @@ class RunAgentArtifact(Base):
     artifact_uri: Mapped[str] = mapped_column(String(1024), nullable=False)
     artifact_version: Mapped[str | None] = mapped_column(String(64))
     summary: Mapped[str | None] = mapped_column(Text)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128))
     created_by: Mapped[str] = mapped_column(String(128), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

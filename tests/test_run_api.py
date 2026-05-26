@@ -31,6 +31,18 @@ def test_run_agents_metadata_contains_key_constraints():
     assert "ck_run_agents_progress_percent_range" in check_constraints
 
 
+def test_run_agent_logs_metadata_contains_idempotency_unique_constraint():
+    run_agent_logs = Base.metadata.tables["run_agent_logs"]
+
+    unique_constraints = {
+        tuple(column.name for column in constraint.columns): constraint.name
+        for constraint in run_agent_logs.constraints
+        if constraint.__class__.__name__ == "UniqueConstraint"
+    }
+
+    assert unique_constraints[("agent_id", "idempotency_key")] == "uk_run_agent_logs_agent_id_idempotency_key"
+
+
 def test_settings_default_database_url_is_explicitly_local_only():
     settings = Settings(_env_file=None)
 
@@ -171,3 +183,33 @@ def test_create_run_rejects_duplicate_run_code(client):
     assert first_response.status_code == 201
     assert second_response.status_code == 409
     assert second_response.json() == {"detail": "run_code already exists"}
+
+
+def test_create_run_duplicate_emits_rejection_audit_log(client, caplog):
+    with caplog.at_level("WARNING", logger="app.audit"):
+        first_response = client.post(
+            "/api/v1/runs",
+            headers={"x-api-token": "dev-token", "x-request-id": "req-dup-audit-1"},
+            json={
+                "run_code": "run-dup-audit",
+                "run_name": "First duplicate audit run",
+                "source_type": "codex",
+            },
+        )
+        second_response = client.post(
+            "/api/v1/runs",
+            headers={"x-api-token": "dev-token", "x-request-id": "req-dup-audit-2"},
+            json={
+                "run_code": "run-dup-audit",
+                "run_name": "Second duplicate audit run",
+                "source_type": "codex",
+            },
+        )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 409
+    assert '"action": "create_run"' in caplog.text
+    assert '"request_id": "req-dup-audit-2"' in caplog.text
+    assert '"reason": "run_code already exists"' in caplog.text
+    assert '"run_code": "run-dup-audit"' in caplog.text
+    assert '"actor": "token-authenticated-caller"' in caplog.text

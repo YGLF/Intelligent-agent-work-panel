@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, JSON, String, Text, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -10,6 +10,7 @@ from app.models.enums import AgentPhase, LogEventType, OperatorType, ReportSourc
 class RunAgentLog(Base):
     __tablename__ = "run_agent_logs"
     __table_args__ = (
+        UniqueConstraint("agent_id", "idempotency_key", name="uk_run_agent_logs_agent_id_idempotency_key"),
         Index("idx_agent_occurred", "agent_id", "occurred_at"),
         Index("idx_run_occurred", "run_id", "occurred_at"),
         Index("idx_event_type", "event_type", "occurred_at"),

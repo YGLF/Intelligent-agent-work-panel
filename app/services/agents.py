@@ -1,10 +1,11 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.models.agent import RunAgent
 from app.models.enums import LogEventType, RunStatus
 from app.models.run import Run
 from app.schemas.agent import AgentRegister, AgentStatusUpdate
-from app.services.audit import append_agent_audit_log
+from app.services.audit import append_agent_audit_log, find_existing_agent_log
 
 
 def register_agent(db: Session, run: Run, payload: AgentRegister) -> RunAgent:
@@ -14,6 +15,8 @@ def register_agent(db: Session, run: Run, payload: AgentRegister) -> RunAgent:
         agent_name=payload.agent_name,
         role=payload.role,
         owner_scope=payload.owner_scope,
+        codex_agent_type=payload.codex_agent_type,
+        conversation_ref=payload.conversation_ref,
     )
     db.add(agent)
 
@@ -34,6 +37,15 @@ def update_agent_status(
     payload: AgentStatusUpdate,
     audit_request_id: str,
 ) -> RunAgent:
+    existing_log = find_existing_agent_log(
+        db,
+        agent_id=agent.id,
+        idempotency_key=payload.idempotency_key,
+    )
+    if existing_log is not None:
+        db.refresh(agent)
+        return agent
+
     old_status = agent.status
     old_phase = agent.phase
     before_progress = agent.progress_percent
@@ -44,8 +56,23 @@ def update_agent_status(
     agent.progress_percent = payload.progress_percent
     agent.current_task = payload.current_task
     agent.blocking_reason = payload.blocking_reason
+    agent.depends_on_json = payload.depends_on
+    agent.handoff_to = payload.handoff_to
+    if payload.needs_input is not None:
+        agent.needs_input = payload.needs_input
+    agent.deliverable_summary = payload.deliverable_summary
+    agent.codex_agent_type = payload.codex_agent_type
+    agent.conversation_ref = payload.conversation_ref
     agent.risk_level = payload.risk_level
     agent.last_update_at = payload.last_update_at
+    if payload.last_heartbeat_at is not None:
+        agent.last_heartbeat_at = payload.last_heartbeat_at
+    if payload.started_at is not None:
+        agent.started_at = payload.started_at
+    if payload.finished_at is not None:
+        agent.finished_at = payload.finished_at
+    if payload.ready_for_integration is not None:
+        agent.needs_input = not payload.ready_for_integration
     agent.version_no = (agent.version_no or 1) + 1
 
     if payload.status == RunStatus.RUNNING and agent.started_at is None:
@@ -79,6 +106,18 @@ def update_agent_status(
         },
     )
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        existing_log = find_existing_agent_log(
+            db,
+            agent_id=agent.id,
+            idempotency_key=payload.idempotency_key,
+        )
+        if existing_log is not None:
+            db.refresh(agent)
+            return agent
+        raise
     db.refresh(agent)
     return agent

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Agent Status Dashboard{% endblock %}
+
+{% block content %}
+{% set dashboard_config = {
+    "apiBase": "/api/v1",
+    "authMode": "dashboard-session"
+} %}
+<main class="dashboard-shell" data-run-id="{{ run_id }}" data-render-mode="dashboard" data-config-source="page-config">
+    <header class="dashboard-header">
+        <p class="dashboard-eyebrow">Codex Multi-Agent Monitor</p>
+        <h1>Agent Status Dashboard</h1>
+        <p class="dashboard-subtitle">HTTP polling dashboard for run {{ run_id }}.</p>
+        <div class="dashboard-statusbar">
+            <span id="refresh-status" class="refresh-status" aria-live="polite">Waiting for first refresh</span>
+            <div id="dashboard-flash" class="dashboard-flash" role="status" aria-live="polite"></div>
+        </div>
+    </header>
+
+    <section class="dashboard-controls" aria-label="Filters">
+        <select id="status-filter" name="status">
+            <option value="">All Statuses</option>
+        </select>
+        <select id="phase-filter" name="phase">
+            <option value="">All Phases</option>
+        </select>
+        <input id="owner-scope-filter" name="owner_scope" placeholder="Owner Scope">
+        <label class="checkbox-filter">
+            <input type="checkbox" id="blocked-only" name="blocked_only">
+            <span>Blocked only</span>
+        </label>
+        <button id="manual-refresh" type="button">Refresh</button>
+    </section>
+
+    <section class="dashboard-grid">
+        <section class="dashboard-panel" data-refresh-section="overview" data-endpoint="overview">
+            <div class="panel-heading">
+                <h2>Overview</h2>
+                <span class="panel-status" data-section-status="overview">Idle</span>
+            </div>
+            <p class="panel-message" data-section-message="overview">Run summary will appear after refresh.</p>
+            <div id="overview-content" class="panel-content panel-overview"></div>
+        </section>
+        <section class="dashboard-panel" data-refresh-section="agents" data-endpoint="agents">
+            <div class="panel-heading">
+                <h2>Agents</h2>
+                <span class="panel-status" data-section-status="agents">Idle</span>
+            </div>
+            <p class="panel-message" data-section-message="agents">Agent cards will render here.</p>
+            <div id="agents-content" class="panel-content panel-agents"></div>
+            <aside id="agent-detail-panel" class="agent-detail-panel" hidden>
+                <h3>Agent Detail</h3>
+                <div class="agent-detail-body"></div>
+            </aside>
+        </section>
+        <section class="dashboard-panel" data-refresh-section="risks" data-endpoint="risks">
+            <div class="panel-heading">
+                <h2>Risks</h2>
+                <span class="panel-status" data-section-status="risks">Idle</span>
+            </div>
+            <p class="panel-message" data-section-message="risks">Risk records will render here.</p>
+            <div id="risks-content" class="panel-content panel-risks"></div>
+        </section>
+        <section class="dashboard-panel" data-refresh-section="timeline" data-endpoint="timeline">
+            <div class="panel-heading">
+                <h2>Timeline</h2>
+                <span class="panel-status" data-section-status="timeline">Idle</span>
+            </div>
+            <p class="panel-message" data-section-message="timeline">Latest events will render here.</p>
+            <div id="timeline-content" class="panel-content panel-timeline"></div>
+        </section>
+    </section>
+</main>
+<script id="dashboard-config" type="application/json">{{ dashboard_config | tojson }}</script>
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

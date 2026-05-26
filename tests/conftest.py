@@ -18,7 +18,7 @@ def make_client() -> Iterator[TestClient]:
 
 
 @pytest.fixture
-def client(tmp_path: Path) -> Iterator[TestClient]:
+def db_session_factory(tmp_path: Path):
     database_path = tmp_path / "test_run_api.db"
     engine = create_engine(
         f"sqlite:///{database_path}",
@@ -28,10 +28,19 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
     testing_session_local = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
     Base.metadata.create_all(bind=engine)
 
+    try:
+        yield testing_session_local
+    finally:
+        Base.metadata.drop_all(bind=engine)
+        engine.dispose()
+
+
+@pytest.fixture
+def client(db_session_factory) -> Iterator[TestClient]:
     app = create_app()
 
     def override_get_db() -> Iterator[Session]:
-        session = testing_session_local()
+        session = db_session_factory()
         try:
             yield session
         finally:
@@ -44,5 +53,3 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
             yield test_client
     finally:
         app.dependency_overrides.clear()
-        Base.metadata.drop_all(bind=engine)
-        engine.dispose()

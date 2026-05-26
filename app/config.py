@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     app_env: Literal["local", "test", "prod"] = "local"
     database_url: str = "sqlite:///./local_dev_agent_status_panel.db"
     api_token: str = "dev-token"
+    dashboard_token_ttl_seconds: int = 3600
 
     model_config = SettingsConfigDict(
         env_file=".env",
