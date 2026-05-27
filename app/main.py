@@ -4,6 +4,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Res
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import select
 
 from app.api.deps import require_api_token, require_request_id
 from app.api.routes.agents import router as agents_router
@@ -13,6 +14,9 @@ from app.db import get_db
 from app.models.run import Run
 from app.security.dashboard import DASHBOARD_SESSION_COOKIE_NAME, create_dashboard_token, verify_dashboard_token
 from app.schemas.common import ApiResponse
+from app.schemas.read import RunMonitorRead
+from app.services.read import get_run_monitor
+from scripts.codex_sync_projects import sync_codex_projects
 
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -46,6 +50,28 @@ def create_app() -> FastAPI:
                 "version": settings.app_version,
             },
         }
+
+    @app.get("/api/v1/monitor", response_model=ApiResponse[RunMonitorRead])
+    def monitor(
+        response: Response,
+        request_id: str = Depends(require_request_id),
+        created_by: str = Depends(require_api_token),
+        db=Depends(get_db),
+    ) -> ApiResponse[RunMonitorRead]:
+        sync_codex_projects()
+        payload = get_run_monitor(db)
+        response.headers["x-request-id"] = request_id
+        return ApiResponse[RunMonitorRead](
+            success=True,
+            code="OK",
+            message="monitor snapshot retrieved",
+            data=payload,
+            request_id=request_id,
+        )
+
+    @app.get("/", response_class=HTMLResponse)
+    def index(request: Request, response: Response, db=Depends(get_db)):
+        return templates.TemplateResponse(request, "monitor.html", {})
 
     @app.get("/runs/{run_id}/dashboard-token")
     def dashboard_token(

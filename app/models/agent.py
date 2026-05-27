@@ -1,6 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy.types import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql.naming import conv
 
@@ -43,11 +44,15 @@ class RunAgent(Base):
         default=RiskLevel.LOW,
     )
     blocking_reason: Mapped[str | None] = mapped_column(Text)
-    depends_on_json: Mapped[list[str] | None] = mapped_column(JSON)
+    depends_on_json: Mapped[list[str] | None] = mapped_column(JSON().with_variant(Text(), "mysql"))
     handoff_to: Mapped[str | None] = mapped_column(String(128))
     needs_input: Mapped[bool] = mapped_column(Boolean, default=False)
     deliverable_summary: Mapped[str | None] = mapped_column(Text)
     codex_agent_type: Mapped[str | None] = mapped_column(String(64))
+    model_name: Mapped[str | None] = mapped_column(String(128))
+    model_tier: Mapped[str | None] = mapped_column(String(64))
+    is_main_agent: Mapped[bool] = mapped_column(Boolean, default=False)
+    parent_agent_id: Mapped[int | None] = mapped_column(ForeignKey("run_agents.id"))
     conversation_ref: Mapped[str | None] = mapped_column(String(255))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -56,15 +61,17 @@ class RunAgent(Base):
     version_no: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        server_default=func.now(),
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     run = relationship("Run", back_populates="agents")
     logs = relationship("RunAgentLog", back_populates="agent")
     artifacts = relationship("RunAgentArtifact", back_populates="agent")
     risks = relationship("RunRisk", back_populates="agent")
+    parent_agent = relationship("RunAgent", remote_side=[id], back_populates="child_agents")
+    child_agents = relationship("RunAgent", back_populates="parent_agent")

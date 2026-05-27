@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Codex 智能体监测面板{% endblock %}
+
+{% block content %}
+<main class="dashboard-shell" data-render-mode="monitor">
+    <header class="dashboard-header">
+        <p class="dashboard-eyebrow">Codex Multi-Project Monitor</p>
+        <h1>Codex 智能体监测面板</h1>
+        <p class="dashboard-subtitle">实时查看每个项目/run 使用了哪些智能体、是否启用子智能体，以及每个智能体当前状态。</p>
+        <div class="dashboard-statusbar">
+            <span id="monitor-refresh-status" class="refresh-status" aria-live="polite">Waiting for monitor token</span>
+            <div id="monitor-flash" class="dashboard-flash" role="status" aria-live="polite"></div>
+        </div>
+    </header>
+
+    <section class="dashboard-controls monitor-auth" aria-label="Monitor auth">
+        <input id="monitor-token" name="monitor-token" type="password" placeholder="输入本机 API_TOKEN 后开始实时监测">
+        <button id="monitor-start" type="button">开始监测</button>
+        <button id="monitor-refresh" type="button">立即刷新</button>
+    </section>
+
+    <section id="monitor-summary" class="monitor-summary"></section>
+    <section id="monitor-runs" class="monitor-runs"></section>
+</main>
+<script src="/static/js/monitor.js"></script>
+{% endblock %}

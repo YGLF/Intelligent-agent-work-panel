@@ -1,11 +1,16 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
+import os
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
+
+os.environ["APP_ENV"] = "test"
+os.environ["API_TOKEN"] = "dev-token"
+os.environ["DATABASE_URL"] = "sqlite:///./local_dev_agent_status_panel.db"
 
 from app.db import Base, get_db
 from app.main import create_app

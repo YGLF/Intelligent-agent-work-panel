@@ -1,6 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy.types import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -30,7 +31,7 @@ class RunAgentLog(Base):
     before_progress: Mapped[int | None] = mapped_column(Integer)
     after_progress: Mapped[int | None] = mapped_column(Integer)
     summary: Mapped[str] = mapped_column(String(255), nullable=False)
-    detail_json: Mapped[dict | list | None] = mapped_column(JSON)
+    detail_json: Mapped[dict | list | None] = mapped_column(JSON().with_variant(Text(), "mysql"))
     reported_by: Mapped[str] = mapped_column(String(128), nullable=False)
     operator_type: Mapped[OperatorType] = mapped_column(
         Enum(OperatorType, native_enum=False, length=32),
@@ -54,7 +55,7 @@ class RunAgentLog(Base):
     result_message: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        server_default=func.now(),
+        default=lambda: datetime.now(timezone.utc),
     )
 
     run = relationship("Run", back_populates="logs")

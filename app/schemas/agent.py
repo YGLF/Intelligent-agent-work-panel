@@ -11,6 +11,10 @@ class AgentRegister(BaseModel):
     role: str = Field(min_length=1, max_length=128)
     owner_scope: str | None = Field(default=None, max_length=128)
     codex_agent_type: str | None = Field(default=None, max_length=64)
+    model_name: str | None = Field(default=None, max_length=128)
+    model_tier: str | None = Field(default=None, max_length=64)
+    is_main_agent: bool = False
+    parent_agent_id: int | None = None
     conversation_ref: str | None = Field(default=None, max_length=255)
 
 
@@ -26,6 +30,10 @@ class AgentStatusUpdate(BaseModel):
     needs_input: bool | None = None
     deliverable_summary: str | None = None
     codex_agent_type: str | None = Field(default=None, max_length=64)
+    model_name: str | None = Field(default=None, max_length=128)
+    model_tier: str | None = Field(default=None, max_length=64)
+    is_main_agent: bool | None = None
+    parent_agent_id: int | None = None
     conversation_ref: str | None = Field(default=None, max_length=255)
     started_at: datetime | None = None
     finished_at: datetime | None = None
@@ -56,6 +64,10 @@ class AgentRead(BaseModel):
     risk_level: RiskLevel
     blocking_reason: str | None
     codex_agent_type: str | None
+    model_name: str | None
+    model_tier: str | None
+    is_main_agent: bool
+    parent_agent_id: int | None
     conversation_ref: str | None
     last_update_at: datetime | None
     version_no: int

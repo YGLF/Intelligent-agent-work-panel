@@ -16,6 +16,10 @@ def register_agent(db: Session, run: Run, payload: AgentRegister) -> RunAgent:
         role=payload.role,
         owner_scope=payload.owner_scope,
         codex_agent_type=payload.codex_agent_type,
+        model_name=payload.model_name,
+        model_tier=payload.model_tier,
+        is_main_agent=payload.is_main_agent,
+        parent_agent_id=payload.parent_agent_id,
         conversation_ref=payload.conversation_ref,
     )
     db.add(agent)
@@ -62,6 +66,14 @@ def update_agent_status(
         agent.needs_input = payload.needs_input
     agent.deliverable_summary = payload.deliverable_summary
     agent.codex_agent_type = payload.codex_agent_type
+    if payload.model_name is not None:
+        agent.model_name = payload.model_name
+    if payload.model_tier is not None:
+        agent.model_tier = payload.model_tier
+    if payload.is_main_agent is not None:
+        agent.is_main_agent = payload.is_main_agent
+    if payload.parent_agent_id is not None:
+        agent.parent_agent_id = payload.parent_agent_id
     agent.conversation_ref = payload.conversation_ref
     agent.risk_level = payload.risk_level
     agent.last_update_at = payload.last_update_at

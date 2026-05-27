@@ -53,9 +53,144 @@
 - `GET /api/v1/runs/{run_id}/timeline`
 - `GET /api/v1/runs/{run_id}/risks`
 
-所有读写接口当前都要求：
+写接口当前要求：
 - `x-api-token`
 - `x-request-id`
+
+读接口当前要求：
+- `x-request-id`
+- `x-api-token`、dashboard 只读令牌或 dashboard 会话 cookie 三者之一
+
+## phpStudy 本机部署
+
+本项目是 Python FastAPI 应用，不是 PHP 应用。phpStudy 在本方案中负责 MySQL 和 Nginx 入口，Python 服务由 Uvicorn 在本机 `127.0.0.1:8000` 独立承载，phpStudy Nginx 再反向代理到该端口。
+
+### 1. 准备 phpStudy MySQL
+
+1. 在 phpStudy 中启动 MySQL。
+2. 打开 phpStudy 的 MySQL 管理工具或命令行。
+3. 复制并执行 [deploy/phpstudy/mysql-init.sql](D:/Object/python_object/ANXIN/PHPTutorial/WWW/Agent_Work_Panel/deploy/phpstudy/mysql-init.sql)。
+4. 执行前必须把 SQL 里的 `change-me-strong-password` 替换成本机专用强密码。
+5. 兼容 phpStudy 的常见连接方式，模板同时创建 `localhost` 和 `127.0.0.1` 两个账号。
+6. 如果 phpStudy 自带的 MySQL/MariaDB 不接受 `CREATE USER`，可以先手动创建账号，再执行后面的 `GRANT`。
+
+该 SQL 会创建：
+- 数据库：`codex_agent_panel`
+- 应用账号：`codex_panel_app`@`127.0.0.1`
+- 最小必要表级权限：`SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, DROP`
+
+### 2. 生成 phpStudy 环境配置
+
+```powershell
+Copy-Item .env.phpstudy.example .env
+```
+
+然后修改 `.env`：
+
+```env
+APP_ENV=local
+DATABASE_URL=mysql+pymysql://codex_panel_app:你的数据库密码@127.0.0.1:3306/codex_agent_panel
+API_TOKEN=替换成本机专用强随机值
+DASHBOARD_TOKEN_TTL_SECONDS=3600
+```
+
+注意：
+- 不要把真实 `.env` 提交到仓库。
+- 不要在公网或生产环境使用示例 token 或示例密码。
+- `APP_ENV=local` 表示本机部署；生产环境必须另行配置 HTTPS、强身份认证和安全 token。
+
+### 3. 安装 Python 依赖
+
+```powershell
+.\scripts\phpstudy\install.ps1
+```
+
+脚本会检查 Python、创建或复用 `.venv`，并安装项目依赖。
+
+### 4. 执行数据库迁移
+
+```powershell
+.\scripts\phpstudy\migrate.ps1
+```
+
+该脚本读取 `.env`，并执行：
+
+```powershell
+.\.venv\Scripts\python.exe -m alembic upgrade head
+```
+
+如果 `alembic upgrade head` 因 phpStudy MySQL 的版本表状态异常失败，脚本会自动尝试 `alembic stamp head` 修复版本表。这只是在版本表和实际结构已一致时的修复手段，不等于重新执行迁移逻辑。
+
+### 5. 启动 Python 服务
+
+```powershell
+.\scripts\phpstudy\start.ps1
+```
+
+服务默认监听：
+
+```text
+http://127.0.0.1:8000
+```
+
+停止服务：
+
+```powershell
+.\scripts\phpstudy\stop.ps1
+```
+
+### 6. 配置 phpStudy Nginx
+
+在 phpStudy 中创建或编辑 Nginx 站点，域名使用：
+
+```text
+localhost
+```
+
+把 [deploy/phpstudy/nginx-agent-panel.conf](D:/Object/python_object/ANXIN/PHPTutorial/WWW/Agent_Work_Panel/deploy/phpstudy/nginx-agent-panel.conf) 中的 `server` 配置复制到 phpStudy 对应站点配置中，或按 phpStudy 支持方式 include 该文件。
+
+核心反向代理配置为：
+
+```nginx
+server_name localhost;
+
+location / {
+    proxy_pass http://127.0.0.1:8000;
+}
+```
+
+配置后重启 phpStudy Nginx。
+
+### 7. 检查部署状态
+
+```powershell
+.\scripts\phpstudy\check.ps1
+```
+
+脚本会检查：
+- `http://127.0.0.1:8000/health`
+- `http://localhost/health`
+
+两者都返回成功，说明 Uvicorn 服务和 phpStudy Nginx 反向代理都正常。
+
+### 8. dashboard 验证
+
+1. 通过 API 创建 run、注册 agent、提交状态。
+2. 获取 dashboard 令牌：
+
+```powershell
+curl http://localhost/runs/1/dashboard-token `
+  -H "x-api-token: 你的API_TOKEN" `
+  -H "x-request-id: req-dashboard-token-001"
+```
+
+3. 浏览器打开：
+
+```text
+http://localhost/runs/1/dashboard?access_token=<token>
+```
+
+打开后，dashboard 会通过 Nginx 入口轮询后端真实数据。
 
 ## 验证运行手册
 

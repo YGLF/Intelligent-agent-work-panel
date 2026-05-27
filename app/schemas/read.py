@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import AgentPhase, LogEventType, ReportSource, ResultStatus, RiskLevel, RiskStatus, RiskType, RunSourceType, RunStatus
 
@@ -41,6 +41,10 @@ class AgentListItemRead(BaseModel):
     handoff_to: str | None
     needs_input: bool
     codex_agent_type: str | None
+    model_name: str | None
+    model_tier: str | None
+    is_main_agent: bool
+    parent_agent_id: int | None
     deliverable_summary: str | None
     conversation_ref: str | None
     last_update_at: datetime | None
@@ -114,3 +118,38 @@ class RiskListRead(BaseModel):
     has_more: bool = False
     next_cursor: str | None = None
     next_updated_since: datetime | None = None
+
+
+class RunMonitorItemRead(BaseModel):
+    run_id: int
+    run_code: str
+    run_name: str
+    source_type: RunSourceType
+    run_status: RunStatus
+    total_agents: int
+    running_count: int
+    completed_count: int
+    blocked_count: int
+    failed_count: int
+    subagent_count: int
+    phase_distribution: dict[str, int]
+    overall_progress: int
+    active_updates_last_1h: int
+    last_active_at: datetime | None
+    agents: list[AgentListItemRead]
+    main_agents: list[AgentListItemRead]
+    child_agents: list[AgentListItemRead]
+
+
+class RunMonitorRead(BaseModel):
+    items: list[RunMonitorItemRead]
+    total_runs: int
+    active_runs: int
+    codex_session_count: int = 0
+    codex_workspace_count: int = 0
+    recent_active_runs: list[RunMonitorItemRead] = Field(default_factory=list)
+    blocked_runs: list[RunMonitorItemRead] = Field(default_factory=list)
+    total_agents: int
+    total_subagents: int
+    total_blocked_agents: int
+    last_refresh_at: datetime

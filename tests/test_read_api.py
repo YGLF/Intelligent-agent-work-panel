@@ -124,6 +124,19 @@ def test_get_run_overview_returns_aggregated_counts(client, db_session_factory):
     assert response.headers["x-request-id"] == "req-overview-get"
 
 
+def test_monitor_snapshot_includes_codex_inventory_counts(client):
+    response = client.get(
+        "/api/v1/monitor",
+        headers={"x-api-token": "dev-token", "x-request-id": "req-monitor"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()["data"]
+    assert "codex_session_count" in payload
+    assert "codex_workspace_count" in payload
+    assert payload["total_runs"] >= 0
+
+
 def test_get_agents_supports_blocked_filter_and_detail_lookup(client):
     run = _create_run(client, "run-read-002")
     blocked_agent = _register_agent(client, run["id"], "agent-blocked", "Blocked Agent", "audit")

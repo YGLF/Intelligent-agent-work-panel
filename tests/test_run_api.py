@@ -64,7 +64,8 @@ def test_settings_rejects_default_api_token_in_prod():
         )
 
 
-def test_settings_rejects_default_api_token_for_non_local_database_without_explicit_local_mode():
+def test_settings_rejects_default_api_token_for_non_local_database_without_explicit_local_mode(monkeypatch):
+    monkeypatch.delenv("APP_ENV", raising=False)
     with pytest.raises(ValueError, match="API_TOKEN"):
         Settings(
             database_url="postgresql://example.invalid/task3",

@@ -7,7 +7,8 @@ from app.models.agent import RunAgent
 from app.models.log import RunAgentLog
 from app.models.risk import RunRisk
 from app.models.run import Run
-from app.schemas.read import AgentDetailRead, AgentListItemRead, AgentListRead, RiskItemRead, RiskListRead, RunOverviewRead, TimelineItemRead, TimelineRead
+from app.schemas.read import AgentDetailRead, AgentListItemRead, AgentListRead, RiskItemRead, RiskListRead, RunMonitorItemRead, RunMonitorRead, RunOverviewRead, TimelineItemRead, TimelineRead
+from scripts.codex_sync_projects import get_codex_inventory_counts
 
 
 def _get_run_or_none(db: Session, run_id: int) -> Run | None:
@@ -155,3 +156,81 @@ def get_run_risks(db: Session, run_id: int) -> tuple[Run | None, RiskListRead | 
     ).all()
     items = [RiskItemRead.model_validate(item) for item in risks]
     return run, RiskListRead(items=items)
+
+
+def _count_subagents(agent_rows: list[RunAgent]) -> int:
+    return sum(1 for agent in agent_rows if not agent.is_main_agent)
+
+
+def get_run_monitor(db: Session) -> RunMonitorRead:
+    runs = db.scalars(
+        select(Run).order_by(
+            case((Run.last_activity_at.is_(None), 1), else_=0).asc(),
+            Run.last_activity_at.desc(),
+            Run.updated_at.desc(),
+            Run.id.desc(),
+        )
+    ).all()
+
+    now = datetime.now(timezone.utc)
+    items: list[RunMonitorItemRead] = []
+    recent_active_runs: list[RunMonitorItemRead] = []
+    blocked_runs: list[RunMonitorItemRead] = []
+    total_agents = 0
+    total_subagents = 0
+    total_blocked_agents = 0
+    active_runs = 0
+
+    for run in runs:
+        agent_rows = db.scalars(select(RunAgent).where(RunAgent.run_id == run.id)).all()
+        overview = get_run_overview(db, run.id)
+        if overview is None:
+            continue
+        agents = [AgentListItemRead.model_validate(agent) for agent in agent_rows]
+        main_agents = [AgentListItemRead.model_validate(agent) for agent in agent_rows if agent.is_main_agent]
+        child_agents = [AgentListItemRead.model_validate(agent) for agent in agent_rows if not agent.is_main_agent]
+        subagent_count = _count_subagents(agent_rows)
+        total_agents += overview.total_agents
+        total_subagents += subagent_count
+        total_blocked_agents += overview.blocked_count
+        if overview.running_count or overview.blocked_count or overview.active_updates_last_1h:
+            active_runs += 1
+        items.append(
+            RunMonitorItemRead(
+                run_id=overview.run_id,
+                run_code=overview.run_code,
+                run_name=overview.run_name,
+                source_type=overview.source_type,
+                run_status=overview.run_status,
+                total_agents=overview.total_agents,
+                running_count=overview.running_count,
+                completed_count=overview.completed_count,
+                blocked_count=overview.blocked_count,
+                failed_count=overview.failed_count,
+                subagent_count=subagent_count,
+                phase_distribution=overview.phase_distribution,
+                overall_progress=overview.overall_progress,
+                active_updates_last_1h=overview.active_updates_last_1h,
+                last_active_at=overview.last_active_at,
+                agents=agents,
+                main_agents=main_agents,
+                child_agents=child_agents,
+            )
+        )
+
+    recent_active_runs = sorted(items, key=lambda item: item.last_active_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)[:5]
+    blocked_runs = [item for item in items if item.blocked_count > 0]
+    codex_session_count, codex_workspace_count = get_codex_inventory_counts()
+    return RunMonitorRead(
+        items=items,
+        total_runs=len(runs),
+        active_runs=active_runs,
+        codex_session_count=codex_session_count,
+        codex_workspace_count=codex_workspace_count,
+        recent_active_runs=recent_active_runs,
+        blocked_runs=blocked_runs,
+        total_agents=total_agents,
+        total_subagents=total_subagents,
+        total_blocked_agents=total_blocked_agents,
+        last_refresh_at=now,
+    )

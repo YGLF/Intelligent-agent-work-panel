@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Codex 智能体状态面板{% endblock %}
+
+{% block content %}
+<main class="dashboard-shell">
+    <header class="dashboard-header">
+        <p class="dashboard-eyebrow">Codex Multi-Agent Monitor</p>
+        <h1>Codex 智能体状态面板</h1>
+        <p class="dashboard-subtitle">当前还没有可展示的 run。创建一个 run 并注册 agent 后，这里会自动切换为实时监测面板。</p>
+    </header>
+
+    <section class="dashboard-panel">
+        <div class="panel-heading">
+            <h2>下一步</h2>
+        </div>
+        <div class="panel-content">
+            <p>1. 通过 API 创建 run。</p>
+            <p>2. 注册 agent 并持续上报状态。</p>
+            <p>3. 再次打开 <code>/</code>，会自动进入最新活跃 run 的 dashboard。</p>
+        </div>
+    </section>
+</main>
+{% endblock %}
